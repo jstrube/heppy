@@ -1,0 +1,132 @@
+#summary Script to convert a TChain into a pytables hdf5 file
+#labels Phase-Support,root
+
+= Introduction =
+You _want_ to use hdf5. You really do. If only your project understood that. They make you use ROOT files and tie you to that technology.
+This script offers a way out.
+= Details =
+Simply create a pytables class that corresponds to your ROOT tuple file.
+The names of the nodes must match the names in the tuple file.
+If you have too many one-to-many mappings in your file, this script may not be appropriate, but I use it to convert events that can contain many candidates; events and candidates get written into separate trees and are linked with keys, similar to tables in a RDBMS.
+{{{
+#!/usr/bin/env python2.4
+from RootPython.Samples import RooTuple
+from ROOT import SigmaPbarGammaEvent, CommonBaryonEvent
+from ROOT import TVector3, TLorentzVector
+from optparse import OptionParser
+from tables import *
+from numpy import array
+import psyco
+#psyco.full()
+
+
+def vector3_to_array(vector):
+    return array([vector.x(), vector.y(), vector.z()])
+
+
+def vector4_to_array(vector):
+    return array([vector.T(), vector.X(), vector.Y(), vector.Z()])
+
+
+def convertEventHeader(table, chain, event):
+    row = table.row
+    nEntries = chain.GetEntries()
+    print 'starting to convert file (%d Events)' % nEntries,
+    header = event.eventHeader
+    for iEv in xrange(nEntries):
+        if iEv % 500 == 0:
+            print '.',
+        chain.GetEntry(iEv)
+        row['eventCMS'] = vector4_to_array(header.eventCMS)
+        row['r2'] = header.r2
+        row['event_id'] = iEv
+        row['upperID'] = header.upperID
+        row['lowerID'] = header.lowerID
+        row.append()
+    table.attrs.nevents = chain.GetEntries()
+    table.flush()
+
+
+def fillProperty(row, columnName, itemName, candidate):
+    if isinstance(itemName, tuple):
+        columnName += itemName[0] + '/'
+        daughter = candidate.__getattribute__(itemName[0])
+        for name in itemName[1]:
+            fillProperty(row, columnName, name, daughter)
+    elif isinstance(itemName, str):
+        columnName += itemName
+        if itemName in ('event_id', 'upperID', 'lowerID'):
+            return
+        data = candidate.__getattribute__(itemName)
+        if isinstance(data, TVector3):
+            row[columnName] = vector3_to_array(data)
+        elif isinstance(data, TLorentzVector):
+            row[columnName] = vector4_to_array(data)
+        else:
+            row[columnName] = data
+    else:
+        print "Unknown column type %s. This is bad !" % itemName
+
+
+def convertB_Candidates(table, chain, event):
+    row = table.row
+    nEntries = chain.GetEntries()
+    print 'starting to convert file (%d Events)' % nEntries,
+    for iEv in xrange(nEntries):
+        if iEv % 500 == 0:
+            print '.',
+        chain.GetEntry(iEv)
+        bList = event.bList
+        upperID = event.eventHeader.upperID
+        lowerID = event.eventHeader.lowerID
+        for B in bList:
+            # just fill the Tuple with everything
+            # hopefully the attribute names are the same.
+            for item in table.colnames:
+                fillProperty(row, '', item, B)
+            row['event_id'] = iEv
+            row['upperID'] = upperID
+            row['lowerID'] = lowerID
+            row.append()
+    # this isn't really the correct number
+    table.attrs.nevents = chain.GetEntries()
+    table.flush()
+    print 'done'
+
+
+def processSample(sample, candidate_class, event_class, baseDir='/data1/BaryonicPenguins/Analysis-32/RooTuples/SigmaTuples'):
+    # RooTuple is just a simple wrapper around TChain
+    # s.chain is the actual TChain.
+    s = RooTuple(sample, baseDir, SigmaPbarGammaEvent, 'SigmaPbarGammaAnalysis')
+    f = openFile('%s_Sigma0Tuples.h5' % sample, 'w')
+    group = f.createGroup(f.root, 'events')
+    # be careful with the expected events. The number of B is not the number of events
+    # trick ROOT into telling us -- it's a hack
+    s.chain.Draw('bList.mES >> dummy')
+    number_of_B = s.chain.GetSelectedRows()
+    print 'number of B:', number_of_B, 'total events:', s.chain.GetEntries()
+    candidates = f.createTable(group, 'B_candidates', candidate_class, 'reconstructed B candidates', filters=Filters(complevel=9, complib='lzo'), expectedrows=number_of_B)
+    events = f.createTable(group, 'eventHeader', event_class, 'event information', filters=Filters(complevel=9, complib='lzo'), expectedrows=s.chain.GetEntries())
+    candidates.attrs.reconstruction = '%s_Sigma0' % sample
+    convertB_Candidates(candidates, s.chain, s.event)
+    convertEventHeader(events, s.chain, s.event)
+    f.close()
+
+
+if __name__ == '__main__':
+    parser = OptionParser()
+    parser.add_option('-b', action='store_true', help='batch mode, passed on to ROOT')
+    parser.add_option('--sample', help='Select the id for the input sample')
+    parser.add_option('--mode', help='Select Lambda or Sigma0 reconstruction. Allowed values are "Lambda" and "Sigma0"')
+    parser.add_option('--directory', help='Base Directory for the files in the chain')
+    options, args = parser.parse_args()
+
+    # the _name_ of the Tuple class. The actual module is imported dynamically
+    modulename = 'TablePython.SigmaPbarGammaTuple'
+    processor = processSample
+
+    tupleModule = __import__(modulename, globals(), locals(), ['B_Candidate'])
+    B_Candidate = vars(tupleModule)['B_Candidate']
+    Event = vars(tupleModule)['Event']
+    processor(options.sample, B_Candidate, Event, options.directory)
+}}}
