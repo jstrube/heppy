@@ -43,7 +43,7 @@ cd test/MnSim
 }}}
 
 
-= Install PyMinuit2 =
+= Install [http://code.google.com/p/pyminuit/ PyMinuit2] =
 First, change the directory back to the one where you put minuit2 and mathcore in order to avoid confusion. If you continue from the previous step, that would be
 {{{
 cd ../../..
