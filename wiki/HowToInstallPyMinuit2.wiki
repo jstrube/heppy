@@ -1,0 +1,14 @@
+#summary How to install PyMinuit2
+
+= Introduction =
+Minuit has become the default minimization package in High Energy Physics. In its latest incarnation, it is maintained by the ROOT development team, but available independently of it.
+
+= Install Minuit2 =
+
+
+= Details =
+
+Add your content here.  Format your content with:
+  * Text in *bold* or _italic_
+  * Headings, paragraphs, and lists
+  * Automatic links to other wiki pages
