@@ -12,7 +12,7 @@
 # imports
 #-----------------------------------------------------------------------
 from __future__ import division
-from math import sqrt, sin, cos, pi, atan2
+from math import sqrt, sin, cos, pi, atan2, hypot
 from geometry import ThreeVector, LorentzVector, Frame, Momentum
 from numpy import eye, zeros, array, asmatrix
 import numpy as N
@@ -47,7 +47,7 @@ class LabFrame(Frame):
         return "lab frame"
 
     def coordinatesOf(self, vector):
-        return vector.coordinates
+        return self.makeLorentzVector(vector._coordinates)
 
     def getMomentum(self, *args):
         if len(args) == 2:
