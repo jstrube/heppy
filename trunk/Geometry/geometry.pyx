@@ -21,18 +21,18 @@ cdef class ThreeVector:
             # Three components are given explicitly
             abc = args
         else:
-            raise IllegalArgumentException, \
+            raise TypeError, \
                 'A ThreeVector must be initialized with a length-3 array or with three components'
 
-        # make the assignment
-        self._coordinates = N.array(abc, dtype=N.float64)
+        # coordinates are column vectors
+        self._coordinates = N.matrix(abc, dtype=N.float64).T
         self._x = abc[0]
         self._y = abc[1]
         self._z = abc[2]
 
 
     def mag(self):
-        return sqrt(self._x**2 + self._y**2 + self._z**2)
+        return sqrt(self.x**2 + self.y**2 + self.z**2)
 
     def __getitem__(self, index):
         return self._coordinates[index] 
@@ -52,7 +52,7 @@ cdef class ThreeVector:
             return self._x
 
         def __set__(self, val):
-            self._x = x
+            self._x = val
             self._coordinates[0] = val
 
     
@@ -83,7 +83,13 @@ cdef class ThreeVector:
         return self._coordinates.copy()
 
     def __add__(self, other):
-        return self.__class__(self._coordinates+other._coordinates)
+        return self.__class__(self.x+other.x, self.y+other.y, self.z+other.z)
+
+    def __iter__(self):
+        """ Returns the iterator over the coordinates. This enables tuple unpacking, e.g. f(*self)
+        """
+        return self._coordinates.__iter__()
+
 
 
 cdef class LorentzVector:
@@ -100,10 +106,11 @@ cdef class LorentzVector:
             # Four components are given explicitly
             abcd = args
         else:
-            raise IllegalArgumentException, \
+            raise TypeError, \
                 'A LorentzVector must be initialized with a length-4 array or with four components'
         
-        self._coordinates = N.array(abcd, dtype=N.float64)
+        # coordinates are a column vector
+        self._coordinates = N.matrix(abcd, dtype=N.float64).T
         self._t = abcd[0]
         self._x = abcd[1]
         self._y = abcd[2]
@@ -150,7 +157,32 @@ cdef class LorentzVector:
         return ThreeVector(self._coordinates[1:])
 
     def __add__(self, other):
-        return self.__class__(self._coordinates+other._coordinates)
+        return self.__class__(self.t+other.t, self.x+other.x, self.y+other.y, self.z+other.z)
+
+    def __sub__(self, other):
+        return self.__class__(self.t-other.t, self.x-other.x, self.y-other.y, self.z-other.z)        
+
+    def __neg__(self):
+        self._coordinates = -self._coordinates
+        self._t = -self._t
+        self._x = -self._x
+        self._y = -self._y
+        self._z = -self._z
+        return self
+        
+
+    def __iter__(self):
+        """ Returns the iterator over the coordinates. This enables tuple unpacking, e.g. f(*self)
+        """
+        return self._coordinates.__iter__()
+        
+    def __repr__(self):
+        return "%r" % self._coordinates
+
+    def __str__(self):
+        return "%s" % self._coordinates
+
+
 
 cdef makeRotationMatrix(double phi, double theta, double psi):
     # Construct a rotation matrix.
@@ -183,7 +215,7 @@ cdef makeRotationMatrix(double phi, double theta, double psi):
     return mat
 
 
-cdef makeBoostMatrix(double beta_x, double beta_y, double beta_z):
+def makeBoostMatrix(double beta_x, double beta_y, double beta_z):
     # Construct a boost matrix.
     # Returns a 4x4 matrix for the boost for a vector beta whose
     # components are 'beta_x', 'beta_y', and 'beta_z'.
@@ -208,7 +240,7 @@ cdef makeBoostMatrix(double beta_x, double beta_y, double beta_z):
         raise ValueError, \
             "beta may not have magnitude greater than one, but is %s" % str(betas)
     # Compute gamma.
-    gamma = 1 / sqrt(1 - beta2)
+    gamma = 1.0 / sqrt(1.0 - beta2)
     # Construct the boost matrix.
     matrix[0, 0] = gamma
     for i from 1 <= i <= 3:
@@ -264,12 +296,15 @@ cdef class Frame:
     def coordinatesOf(self, vector):
         """ Return the four coordinates of 'vector' in this frame.
         """
-
         x = self.__matrix * vector._coordinates
-        vec = LorentzVector(x.A[0])
+        vec = LorentzVector(x.A1)
         # neat little hack to ensure we return the same type that was passed in
         vec.__class__ == vector.__class__
         return vec
+
+
+    def boostTo(self, vector):
+        return self.coordinatesOf(vector)
 
 
     def makeLorentzVector(self, *args, **kwargs):
@@ -341,4 +376,36 @@ cdef class Momentum(LorentzVector):
         def __get__(self):
             return self.__get_restFrame()
     
+    property e:
+        def __get__(self):
+            return self._t
 
+        def __set__(self, val):
+            self._t = val
+            self._coordinates[0] = val
+
+    property px:
+        def __get__(self):
+            return self._x
+
+        def __set__(self, val):
+            self._x = val
+            self._coordinates[1] = val
+
+    property py:
+        def __get__(self):
+            return self._y
+
+        def __set__(self, val):
+            self._y = val
+            self._coordinates[2] = val
+
+    property pz:
+        def __get__(self):
+            return self._z
+
+        def __set__(self, val):
+            self._z = val
+            self._coordinates[3] = val
+            
+    
