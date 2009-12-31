@@ -46,7 +46,18 @@ setup(name         = 'heppy'
     , url          = 'http://code.gmail.com/heppy'
     , ext_modules  = [pyx_ext]
     , cmdclass     = cmdclass
-    , packages     = ['Geometry', 'PaidaUtils', 'Fitting', 'Histogram']
-    , package_dir  = {'Geometry': 'src/Geometry', 'PaidaUtils': 'src/PaidaUtils', 'Fitting': 'src/Fitting', 'Histogram': 'src/Histogram'}
+    , packages     = ['Geometry', 'PaidaUtils', 'Histogram']#, 'Fitting' #is not ready, yet
+    , package_dir  = {'Geometry': 'src/Geometry', 'PaidaUtils': 'src/PaidaUtils', 'Histogram': 'src/Histogram'}#, 'Fitting': 'src/Fitting'
     , test_suite = 'nose.collector'
+    , classifiers=[ 'Development Status :: 3 - Alpha'
+                  , 'Environment :: Console'
+                  , 'Intended Audience :: End Users/Desktop'
+                  , 'Intended Audience :: Developers'
+                  , 'License :: OSI Approved :: Python Software Foundation License'
+                  , 'Operating System :: MacOS :: MacOS X'
+                  , 'Operating System :: POSIX'
+                  , 'Programming Language :: Python'
+                  , 'Topic :: Science'
+                  ]
     )
+
