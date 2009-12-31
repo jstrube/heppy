@@ -21,10 +21,10 @@ import numpy
 # Define a pyrex-based extension module, using the generated sources if pyrex
 # is not available.
 if has_pyrex:
-    pyx_sources = ['Geometry/geometry.pyx']
+    pyx_sources = ['src/Geometry/geometry.pyx']
     cmdclass    = {'build_ext': build_ext}
 else:
-    pyx_sources = ['Geometry/geometry.c']
+    pyx_sources = ['src/Geometry/geometry.c']
     cmdclass    = {}
 
 
@@ -46,6 +46,7 @@ setup(name         = 'heppy'
     , url          = 'http://code.gmail.com/heppy'
     , ext_modules  = [pyx_ext]
     , cmdclass     = cmdclass
-    , packages     = ['Geometry', 'PaidaUtils']
+    , packages     = ['Geometry', 'PaidaUtils', 'Fitting', 'Histogram']
+    , package_dir  = {'Geometry': 'src/Geometry', 'PaidaUtils': 'src/PaidaUtils', 'Fitting': 'src/Fitting', 'Histogram': 'src/Histogram'}
     , test_suite = 'nose.collector'
     )
